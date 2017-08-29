@@ -27,10 +27,11 @@
   "Wait for a shell process to complete; error on a non-zero exit
   code."
   [proc]
-  (if (zero? (sh/exit-code proc))
-    (sh/stream-to-string proc :out)
-    (throw (Exception. (or (not-empty (sh/stream-to-string proc :err))
-                           (sh/stream-to-string proc :out))))))
+  (let [out (sh/stream-to-string proc :out)
+        err (sh/stream-to-string proc :err)]
+    (if (zero? (sh/exit-code proc))
+      out
+      (throw (Exception. (or (not-empty err) out))))))
 
 (defn tmp-dir
   []
