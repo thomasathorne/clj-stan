@@ -15,23 +15,21 @@
 (ns clj-stan.core
   (:require [clj-stan.r-dump-format :as r-dump]
             [clj-stan.read-output :as output]
-            [me.raynes.conch.low-level :as sh]
+            [me.raynes.conch :as conch]
             [environ.core :refer [env]]
             [clojure.java.io :as io]))
+
+(defn execute
+  [& args]
+  (try (apply conch/execute args)
+       (catch Exception e
+         (run! println (:err (:proc (.data e))))
+         (run! println (:out (:proc (.data e))))
+         (throw e))))
 
 (defprotocol Model
   (sample [this data-map] [this data-map params])
   (optimize [this data-map]))
-
-(defn handle-proc
-  "Wait for a shell process to complete; error on a non-zero exit
-  code."
-  [proc]
-  (let [out (sh/stream-to-string proc :out)
-        err (sh/stream-to-string proc :err)]
-    (if (zero? (sh/exit-code proc))
-      out
-      (throw (Exception. (or (not-empty err) out))))))
 
 (defn tmp-dir
   []
@@ -48,12 +46,13 @@
   (sample [this data-map {:keys [chains chain-length] :or {chains 5 chain-length 2000}}]
     (let [t (tmp-dir)]
       (r-dump/r-dump (str t "/tmp-data.R") data-map)
-      (let [procs (map #(sh/proc executable "sample"
-                                 (str "num_samples=" chain-length)
-                                 "data" (str "file=" t "/tmp-data.R")
-                                 "output" (str "file=" t "/output-" % ".csv"))
-                       (range chains))]
-        (run! handle-proc procs)
+      (let [procs (mapv #(conch/execute executable "sample"
+                                        (str "num_samples=" chain-length)
+                                        "data" (str "file=" t "/tmp-data.R")
+                                        "output" (str "file=" t "/output-" % ".csv")
+                                        {:background true})
+                        (range chains))]
+        (mapv deref procs)
         (into []
               (mapcat #(output/read-stan-output (str t "/output-" % ".csv")))
               (range chains)))))
@@ -61,9 +60,9 @@
   (optimize [this data-map]
     (let [t (tmp-dir)]
       (r-dump/r-dump (str t "/tmp-data.R") data-map)
-      (handle-proc (sh/proc executable "optimize"
-                            "data" (str "file=" t "/tmp-data.R")
-                            "output" (str "file=" t "/output.csv")))
+      (execute executable "optimize"
+               "data" (str "file=" t "/tmp-data.R")
+               "output" (str "file=" t "/output.csv"))
       (first (output/read-stan-output (str t "/output.csv"))))))
 
 (defn file-last-modified [fname] (.lastModified (io/file fname)))
@@ -83,28 +82,27 @@
           hpp-file (str executable ".hpp")]
       (make-step
        model-file hpp-file
-       (handle-proc (sh/proc (str home "/bin/stanc") model-file (str "--o=" hpp-file)
-                             :verbose :very)))
+       (println (format "Compiling model %s to C++." model-file))
+       (execute (str home "/bin/stanc") model-file (str "--o=" hpp-file)))
       (make-step
        hpp-file executable
-       (handle-proc
-        (sh/proc "g++"
-                 (str "-I" home "/src")
-                 (str "-I" home "/stan/src")
-                 "-isystem" (str home "/stan/lib/stan_math/")
-                 "-isystem" (str home "/stan/lib/stan_math/lib/eigen_3.3.3")
-                 "-isystem" (str home "/stan/lib/stan_math/lib/boost_1.62.0")
-                 "-isystem" (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/include")
-                 "-Wall"
-                 "-DEIGEN_NO_DEBUG" "-DBOOST_RESULT_OF_USE_TR1" "-DBOOST_NO_DECLTYPE"
-                 "-DBOOST_DISABLE_ASSERTS" "-DFUSION_MAX_VECTOR_SIZE=12" "-DNO_FPRINTF_OUTPUT"
-                 "-pipe" "-Wno-unused-local-typedefs" "-lpthread"
-                 "-O3" "-o" executable
-                 (str home "/src/cmdstan/main.cpp")
-                 "-include" hpp-file
-                 (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/lib/libsundials_nvecserial.a")
-                 (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/lib/libsundials_cvodes.a")
-                 :verbose :very)))
+       (println (format "Compiling C++ %s into executable %s." hpp-file executable))
+       (execute "g++"
+                (str "-I" home "/src")
+                (str "-I" home "/stan/src")
+                "-isystem" (str home "/stan/lib/stan_math/")
+                "-isystem" (str home "/stan/lib/stan_math/lib/eigen_3.3.3")
+                "-isystem" (str home "/stan/lib/stan_math/lib/boost_1.62.0")
+                "-isystem" (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/include")
+                "-Wall"
+                "-DEIGEN_NO_DEBUG" "-DBOOST_RESULT_OF_USE_TR1" "-DBOOST_NO_DECLTYPE"
+                "-DBOOST_DISABLE_ASSERTS" "-DFUSION_MAX_VECTOR_SIZE=12" "-DNO_FPRINTF_OUTPUT"
+                "-pipe" "-Wno-unused-local-typedefs" "-lpthread"
+                "-O3" "-o" executable
+                (str home "/src/cmdstan/main.cpp")
+                "-include" hpp-file
+                (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/lib/libsundials_nvecserial.a")
+                (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/lib/libsundials_cvodes.a")))
       (->CompiledModel executable))
     (throw (Exception.
             "STAN_HOME environment variable is not set. See `clj-stan` documentation."))))

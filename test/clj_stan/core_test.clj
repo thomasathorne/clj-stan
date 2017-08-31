@@ -61,10 +61,20 @@
     (let [data {:N 1 :K 2 :sample_cov [[[10 1] [2 10]]]}
           exception (try (stan/sample arrays data)
                          (catch Exception e e))]
-      (is (= java.lang.Exception (type exception)))
+      (is (= java.util.concurrent.ExecutionException (type exception)))
       (is (re-find #"sample_cov\[k0__\] is not symmetric" (.getMessage exception))))
     (let [data {:N 1 :K 2 :sample_cov []}
           exception (try (stan/sample arrays data)
                          (catch Exception e e))]
-      (is (= java.lang.Exception (type exception)))
+      (is (= java.util.concurrent.ExecutionException (type exception)))
       (is (re-find #"mismatch in number dimensions" (.getMessage exception))))))
+
+(deftest verbose-model-test
+  "This catches a particular bug that occurred when poor buffering of
+  stdout from a process caused the process to stall."
+  (let [verbose (stan/make "test-resources/verbose.stan" "verbose")
+        future-count (future (count (stan/sample verbose {} {:chains 40 :chain-length 100})))]
+    (Thread/sleep 2000)
+    (is (realized? future-count))
+    (when (realized? future-count)
+      (is (= 4000 @future-count)))))
