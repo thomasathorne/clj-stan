@@ -7,4 +7,5 @@
                  [org.clojure/data.csv "0.1.4"]
                  [me.raynes/conch "0.8.0"]
                  [pandect "0.6.1"]
-                 [environ "1.1.0"]])
+                 [environ "1.1.0"]]
+  :profiles {:dev {:resource-paths ["test-resources"]}})
