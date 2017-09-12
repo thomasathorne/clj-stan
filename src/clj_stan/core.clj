@@ -17,6 +17,7 @@
             [clj-stan.read-output :as output]
             [me.raynes.conch :as conch]
             [environ.core :refer [env]]
+            [pandect.algo.sha256 :refer [sha256]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
 
@@ -66,82 +67,36 @@
                "output" (str "file=" t "/output.csv"))
       (first (output/read-stan-output (str t "/output.csv"))))))
 
-(defn file-last-modified [fname] (.lastModified (io/file fname)))
-
-(defn changed-content?
-  [fname content]
-  (or (not (.exists (io/file fname)))
-      (not= (slurp fname) content)))
-
-(defmacro make-step
-  [in out & body]
-  `(do (if (.exists (io/file ~in))
-         (when (< (file-last-modified ~out) (file-last-modified ~in))
-           ~@body)
-         (throw (Exception. (str "File " ~in " not found."))))))
-
-(defmulti model-path
-  "Takes a file name, a file object, a resource url, or similar.
-  Returns a file path that can be passed to the `stanc` executable (if
-  necessary by writing out the content of the resource to a new file
-  in the `target` directory). Returns `nil` if this is not possible."
-  type)
-
-(defmethod model-path :default [_] nil)
-
-(defmethod model-path java.lang.String
-  [filename]
-  (when (.exists (io/file filename))
-    filename))
-
-(defmethod model-path java.io.File
-  [file]
-  (when (.exists file)
-    (.getPath file)))
-
-(defmethod model-path java.net.URL
-  [url]
-  (if (.exists (io/file (.getPath url)))
-    (.getPath url)
-    (let [filename (str "target/stan/" (last (str/split (.getPath url) #"/")))
-          _ (io/make-parents filename)
-          content (slurp url)]
-      (when (changed-content? filename content)
-        (spit filename (slurp url)))
-      filename)))
-
 (defn make
-  [model-file-or-resource output]
-  (let [home (or (env :stan-home)
-                 (throw (Exception. "STAN_HOME environment variable is not set.
+  [model]
+  (let [text (slurp model)
+        hash (sha256 text)
+        exe (str "target/clj-stan/_" hash)
+        _ (io/make-parents exe)]
+    (when (not (.exists (io/file exe)))
+      (let [home (or (env :stan-home)
+                     (throw (Exception. "STAN_HOME environment variable is not set.
                                      See `clj-stan` documentation.")))
-        model-file (or (model-path model-file-or-resource)
-                       (throw (Exception. (str "Cannot recover the resource "
-                                               model-file-or-resource))))
-        executable (str "target/stan/" output)
-        _ (io/make-parents executable)
-        hpp-file (str executable ".hpp")]
-    (make-step
-     model-file hpp-file
-     (println (format "Compiling model %s to C++." model-file))
-     (execute (str home "/bin/stanc") model-file (str "--o=" hpp-file)))
-    (make-step
-     hpp-file executable
-     (println (format "Compiling C++ %s into executable %s." hpp-file executable))
-     (execute "g++"
-              (str "-I" home "/src")
-              (str "-I" home "/stan/src")
-              "-isystem" (str home "/stan/lib/stan_math/")
-              "-isystem" (str home "/stan/lib/stan_math/lib/eigen_3.3.3")
-              "-isystem" (str home "/stan/lib/stan_math/lib/boost_1.62.0")
-              "-isystem" (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/include")
-              "-Wall"
-              "-DEIGEN_NO_DEBUG" "-DBOOST_RESULT_OF_USE_TR1" "-DBOOST_NO_DECLTYPE"
-              "-DBOOST_DISABLE_ASSERTS" "-DFUSION_MAX_VECTOR_SIZE=12" "-DNO_FPRINTF_OUTPUT"
-              "-pipe" "-Wno-unused-local-typedefs" "-lpthread"
-              "-O3" "-o" executable
-              (str home "/src/cmdstan/main.cpp")
-              "-include" hpp-file
-              (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/lib/libsundials_nvecserial.a")
-              (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/lib/libsundials_cvodes.a")))
-    (->CompiledModel executable)))
+            model-file (str exe ".stan")
+            hpp-file (str exe ".hpp")]
+        (spit model-file text)
+        (println (format "Compiling %s to C++." model))
+        (execute (str home "/bin/stanc") model-file (str "--o=" hpp-file))
+        (println (format "Compiling C++ for %s into executable." model))
+        (execute "g++"
+                 (str "-I" home "/src")
+                 (str "-I" home "/stan/src")
+                 "-isystem" (str home "/stan/lib/stan_math/")
+                 "-isystem" (str home "/stan/lib/stan_math/lib/eigen_3.3.3")
+                 "-isystem" (str home "/stan/lib/stan_math/lib/boost_1.62.0")
+                 "-isystem" (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/include")
+                 "-Wall"
+                 "-DEIGEN_NO_DEBUG" "-DBOOST_RESULT_OF_USE_TR1" "-DBOOST_NO_DECLTYPE"
+                 "-DBOOST_DISABLE_ASSERTS" "-DFUSION_MAX_VECTOR_SIZE=12" "-DNO_FPRINTF_OUTPUT"
+                 "-pipe" "-Wno-unused-local-typedefs" "-lpthread"
+                 "-O3" "-o" exe
+                 (str home "/src/cmdstan/main.cpp")
+                 "-include" hpp-file
+                 (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/lib/libsundials_nvecserial.a")
+                 (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/lib/libsundials_cvodes.a"))))
+    (->CompiledModel exe)))

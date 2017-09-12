@@ -14,7 +14,8 @@
 
 (ns clj-stan.core-test
   (:require [clojure.test :refer :all]
-            [clj-stan.core :as stan]))
+            [clj-stan.core :as stan]
+            [clojure.java.io :as io]))
 
 (defn approx=
   ([a b] (approx= a b 0.0001))
@@ -23,7 +24,7 @@
 (defn mean [xs] (/ (apply + xs) (double (count xs))))
 
 (deftest bernoulli-test
-  (let [bernoulli (stan/make "test-resources/bernoulli.stan" "bernoulli")]
+  (let [bernoulli (stan/make "test-resources/bernoulli.stan")]
     (is (= 100 (count (stan/sample bernoulli {:N 0 :y []} {:chains 1 :chain-length 100}))))
     (is (= 100 (count (stan/sample bernoulli {:N 0 :y []} {:chains 10 :chain-length 10}))))
     (is (= 100 (count (stan/sample bernoulli {:N 0 :y []} {:chains 100 :chain-length 1}))))
@@ -41,7 +42,7 @@
       (is (approx= (/ 17.5 27) (mean (map :theta samples)) 0.01)))))
 
 (deftest array-handling-test
-  (let [arrays (stan/make "test-resources/arrays.stan" "arrays")]
+  (let [arrays (stan/make "test-resources/arrays.stan")]
     (let [data {:N 4 :K 3
                 :sample_cov [[[10 2 2]
                               [2 10 2]
@@ -72,7 +73,7 @@
 (deftest verbose-model-test
   "This catches a particular bug that occurred when poor buffering of
   stdout from a process caused the process to stall."
-  (let [verbose (stan/make "test-resources/verbose.stan" "verbose")
+  (let [verbose (stan/make "test-resources/verbose.stan")
         future-count (future (count (stan/sample verbose {} {:chains 40 :chain-length 100})))]
     (Thread/sleep 2000)
     (is (realized? future-count))

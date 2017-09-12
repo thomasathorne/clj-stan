@@ -6,4 +6,5 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/data.csv "0.1.4"]
                  [me.raynes/conch "0.8.0"]
+                 [pandect "0.6.1"]
                  [environ "1.1.0"]])
