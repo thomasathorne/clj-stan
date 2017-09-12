@@ -82,9 +82,9 @@
 
 (defmulti model-path
   "Takes a file name, a file object, a resource url, or similar.
-  Returns a file path that can be passed to the `stanc` executable; if
-  necessary by writing out the data to a new file in the `target`
-  directory. Returns `nil` if this is not possible."
+  Returns a file path that can be passed to the `stanc` executable (if
+  necessary by writing out the content of the resource to a new file
+  in the `target` directory). Returns `nil` if this is not possible."
   type)
 
 (defmethod model-path :default [_] nil)
