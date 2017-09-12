@@ -68,6 +68,11 @@
 
 (defn file-last-modified [fname] (.lastModified (io/file fname)))
 
+(defn changed-content?
+  [fname content]
+  (or (not (.exists (io/file fname)))
+      (not= (slurp fname) content)))
+
 (defmacro make-step
   [in out & body]
   `(do (if (.exists (io/file ~in))
@@ -81,6 +86,8 @@
   necessary by writing out the data to a new file in the `target`
   directory. Returns `nil` if this is not possible."
   type)
+
+(defmethod model-path :default [_] nil)
 
 (defmethod model-path java.lang.String
   [filename]
@@ -97,8 +104,10 @@
   (if (.exists (io/file (.getPath url)))
     (.getPath url)
     (let [filename (str "target/stan/" (last (str/split (.getPath url) #"/")))
-          _ (io/make-parents filename)]
-      (spit filename (slurp (.getContent url)))
+          _ (io/make-parents filename)
+          content (slurp url)]
+      (when (changed-content? filename content)
+        (spit filename (slurp url)))
       filename)))
 
 (defn make
