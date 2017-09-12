@@ -14,8 +14,7 @@
 
 (ns clj-stan.core-test
   (:require [clojure.test :refer :all]
-            [clj-stan.core :as stan]
-            [clojure.java.io :as io]))
+            [clj-stan.core :as stan]))
 
 (defn approx=
   ([a b] (approx= a b 0.0001))

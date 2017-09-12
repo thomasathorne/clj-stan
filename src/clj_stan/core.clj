@@ -18,8 +18,7 @@
             [me.raynes.conch :as conch]
             [environ.core :refer [env]]
             [pandect.algo.sha256 :refer [sha256]]
-            [clojure.java.io :as io]
-            [clojure.string :as str]))
+            [clojure.java.io :as io]))
 
 (defn execute
   [& args]
