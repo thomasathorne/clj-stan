@@ -66,6 +66,12 @@
                "output" (str "file=" t "/output.csv"))
       (first (output/read-stan-output (str t "/output.csv"))))))
 
+(defn lib
+  [path lib-name]
+  (first (filter (fn [s]
+                   (.startsWith s (str path lib-name "_")))
+                 (map str (.listFiles (io/file path))))))
+
 (defn make
   [model]
   (let [text (slurp model)
@@ -77,7 +83,8 @@
                      (throw (Exception. "STAN_HOME environment variable is not set.
                                      See `clj-stan` documentation.")))
             model-file (str exe ".stan")
-            hpp-file (str exe ".hpp")]
+            hpp-file (str exe ".hpp")
+            lib-path (str home "/stan/lib/stan_math/lib/")]
         (spit model-file text)
         (println (format "Compiling %s to C++." model))
         (execute (str home "/bin/stanc") model-file (str "--o=" hpp-file))
@@ -86,9 +93,9 @@
                  (str "-I" home "/src")
                  (str "-I" home "/stan/src")
                  "-isystem" (str home "/stan/lib/stan_math/")
-                 "-isystem" (str home "/stan/lib/stan_math/lib/eigen_3.3.3")
-                 "-isystem" (str home "/stan/lib/stan_math/lib/boost_1.62.0")
-                 "-isystem" (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/include")
+                 "-isystem" (lib lib-path "eigen")
+                 "-isystem" (lib lib-path "boost")
+                 "-isystem" (str (lib lib-path "cvodes") "/include")
                  "-Wall"
                  "-DEIGEN_NO_DEBUG" "-DBOOST_RESULT_OF_USE_TR1" "-DBOOST_NO_DECLTYPE"
                  "-DBOOST_DISABLE_ASSERTS" "-DFUSION_MAX_VECTOR_SIZE=12" "-DNO_FPRINTF_OUTPUT"
@@ -96,6 +103,6 @@
                  "-O3" "-o" exe
                  (str home "/src/cmdstan/main.cpp")
                  "-include" hpp-file
-                 (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/lib/libsundials_nvecserial.a")
-                 (str home "/stan/lib/stan_math/lib/cvodes_2.9.0/lib/libsundials_cvodes.a"))))
+                 (str (lib lib-path "cvodes") "/lib/libsundials_nvecserial.a")
+                 (str (lib lib-path "cvodes") "/lib/libsundials_cvodes.a"))))
     (->CompiledModel exe)))
