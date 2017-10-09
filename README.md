@@ -7,8 +7,15 @@ platform as an external process.
 
 This project uses the `cmdstan` command line interface to STAN.
 
-You can build this by downloading the most recent tar file from
-https://github.com/stan-dev/cmdstan/releases and then running
+To install `cmdstan` version `2.17.0` (other versions should work too,
+but may need different dependencies), make sure you have the necessary
+dependencies installed:
+
+    sudo apt-get install clang libc++-dev
+
+and then download the tar file `cmdstan-2.17.0.tar.gz` from
+https://github.com/stan-dev/cmdstan/releases. Extract the archive, and
+then run
 
     make build -j4
 
