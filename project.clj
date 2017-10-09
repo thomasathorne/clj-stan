@@ -1,4 +1,4 @@
-(defproject clj-stan "0.2.1-SNAPSHOT"
+(defproject clj-stan "0.2.1"
   :description "A library to interface with STAN, using the command line interface."
   :url "https://github.com/thomasathorne/clj-stan"
   :license {:name "Apache License, Version 2.0"
