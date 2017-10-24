@@ -2,7 +2,8 @@
 
 set -e
 
-apt-get install --yes clang g++ libc++-dev
+apt-get update
+apt-get install --yes make clang g++ libc++-dev
 
 VERSION='2.17.0'
 
