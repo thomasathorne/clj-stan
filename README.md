@@ -11,7 +11,7 @@ To install `cmdstan` version `2.17.0` (other versions should work too,
 but may need different dependencies), make sure you have the necessary
 dependencies installed:
 
-    sudo apt-get install clang libc++-dev
+    sudo apt-get install clang g++ libc++-dev
 
 and then download the tar file `cmdstan-2.17.0.tar.gz` from
 https://github.com/stan-dev/cmdstan/releases. Extract the archive, and
@@ -26,7 +26,11 @@ intensive.
 You must configure the environment variable `$STAN_HOME` to be the
 path to the directory extracted from the release tar.
 
-A simple way to test that things are correctly configured is to run
+This process is scripted in the `install` directory. There is also a
+`Dockerfile` there, which is intended to build a base image for
+clojure apps that use `clj-stan`.
+
+A simple way to check that things are correctly configured is to run
 the (fairly minimal) test suite:
 
     me@machine:~/projects/clj-stan$ lein test
