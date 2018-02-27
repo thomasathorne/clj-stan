@@ -30,7 +30,8 @@
 
 (defprotocol Model
   (sample [this data-map] [this data-map params])
-  (optimize [this data-map]))
+  (optimize [this data-map])
+  (variational [this data-map algorithm]))
 
 (defn tmp-dir
   []
@@ -62,6 +63,15 @@
     (let [t (tmp-dir)]
       (r-dump/r-dump (str t "/tmp-data.R") data-map)
       (execute executable "optimize"
+               "data" (str "file=" t "/tmp-data.R")
+               "output" (str "file=" t "/output.csv"))
+      (first (output/read-stan-output (str t "/output.csv")))))
+
+  (variational [this data-map algorithm]
+    (let [t (tmp-dir)]
+      (r-dump/r-dump (str t "/tmp-data.R") data-map)
+      (execute executable "variational"
+               (str "algorithm=" algorithm)
                "data" (str "file=" t "/tmp-data.R")
                "output" (str "file=" t "/output.csv"))
       (first (output/read-stan-output (str t "/output.csv"))))))
