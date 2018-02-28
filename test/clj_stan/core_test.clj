@@ -50,6 +50,25 @@
       (is (< (apply max (map :lp__ samples)) (:lp__ optimized)))
       (is (approx= (/ 17.5 27) (mean (map :theta samples)) 0.01)))))
 
+; Bernoulli-test using Variational Bayesian optimisation
+(deftest bernoulli-test-variational
+  (let [bernoulli (stan/make (io/resource "bernoulli.stan"))]
+    (is (= 100 (count (stan/sample bernoulli {:N 0 :y []} {:chains 1 :chain-length 100}))))
+    (is (= 100 (count (stan/sample bernoulli {:N 0 :y []} {:chains 10 :chain-length 10}))))
+    (is (= 100 (count (stan/sample bernoulli {:N 0 :y []} {:chains 100 :chain-length 1}))))
+    (let [data {:N 4 :y [0 1 0 1]}
+          samples (stan/sample bernoulli data)
+          optimized (stan/optimize bernoulli data)]
+      (is (approx= 0.5 (:theta optimized)))
+      (is (< (apply max (map :lp__ samples)) (:lp__ optimized)))
+      (is (approx= 0.5 (mean (map :theta samples)) 0.01)))
+    (let [data {:N 26 :y [0 1 0 1 1 1 1 1 0 1 1 1 1 0 0 1 1 0 0 0 0 1 1 1 1 1]}
+          samples (stan/sample bernoulli data)
+          optimized (stan/variational bernoulli data "fullrank")]
+      (is (approx= (/ 16.5 25) (:theta optimized) 0.01))
+      (is (< (apply max (map :lp__ samples)) (:lp__ optimized)))
+      (is (approx= (/ 17.5 27) (mean (map :theta samples)) 0.01)))))
+
 (deftest array-handling-test
   (let [arrays (stan/make (io/resource "arrays.stan"))]
     (let [data {:N 4 :K 3

@@ -75,6 +75,16 @@ posterior distribution of the model, and:
 calls the optimization routine of the executable, which will find the
 MAP ('Maximum A Posteriori') estimate for the model.
 
+Alternatively, Variational Bayesian approach can be used for model
+training
+
+    (stan/variational bern {:N 3 :y [0 1 1]} "fullrank")
+
+The third parameter specifies the variational algorithm to be used,
+which can be either `meanfield` (using a fully factored Gaussian for
+the approximation) or `fullrank` (using a Gaussian with full-rank
+covariance matrix for the optimization).
+
 ## Resources
 
 See the cmdstan documentation at
