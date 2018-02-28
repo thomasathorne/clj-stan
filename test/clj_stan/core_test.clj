@@ -38,17 +38,24 @@
     (is (= 100 (count (stan/sample bernoulli {:N 0 :y []} {:chains 10 :chain-length 10}))))
     (is (= 100 (count (stan/sample bernoulli {:N 0 :y []} {:chains 100 :chain-length 1}))))
     (let [data {:N 4 :y [0 1 0 1]}
-          samples (stan/sample bernoulli data)
-          optimized (stan/optimize bernoulli data)]
+          samples (stan/sample bernoulli data {:seed 1})
+          optimized (stan/optimize bernoulli data {:seed 1})]
       (is (approx= 0.5 (:theta optimized)))
       (is (< (apply max (map :lp__ samples)) (:lp__ optimized)))
       (is (approx= 0.5 (mean (map :theta samples)) 0.01)))
     (let [data {:N 26 :y [0 1 0 1 1 1 1 1 0 1 1 1 1 0 0 1 1 0 0 0 0 1 1 1 1 1]}
-          samples (stan/sample bernoulli data)
-          optimized (stan/optimize bernoulli data)]
+          samples (stan/sample bernoulli data {:seed 1})
+          optimized (stan/optimize bernoulli data {:seed 1})]
       (is (approx= (/ 16.5 25) (:theta optimized)))
       (is (< (apply max (map :lp__ samples)) (:lp__ optimized)))
-      (is (approx= (/ 17.5 27) (mean (map :theta samples)) 0.01)))))
+      (is (approx= (/ 17.5 27) (mean (map :theta samples)) 0.01)))
+    (testing "We can use `stan/variational` to apply the Variational Bayes method."
+      (let [data {:N 26 :y [0 1 0 1 1 1 1 1 0 1 1 1 1 0 0 1 1 0 0 0 0 1 1 1 1 1]}
+            samples (stan/sample bernoulli data {:seed 1})
+            optimized (stan/variational bernoulli data "fullrank" {:seed 1})]
+        (is (approx= (/ 16.5 25) (:theta optimized) 0.01))
+        (is (< (apply max (map :lp__ samples)) (:lp__ optimized)))
+        (is (approx= (/ 17.5 27) (mean (map :theta samples)) 0.01))))))
 
 (deftest array-handling-test
   (let [arrays (stan/make (io/resource "arrays.stan"))]
@@ -65,8 +72,8 @@
                              [[10.3 2.1 0.4]
                               [2.1 12.1 -0.3]
                               [0.4 -0.3 9.8]]]}
-          samples (stan/sample arrays data)
-          optimized (stan/optimize arrays data)]
+          samples (stan/sample arrays data {:seed 1})
+          optimized (stan/optimize arrays data {:seed 1})]
       (is (< (apply max (map :lp__ samples)) (:lp__ optimized))))
     (let [data {:N 1 :K 2 :sample_cov [[[10 1] [2 10]]]}
           exception (try (stan/sample arrays data)

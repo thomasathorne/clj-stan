@@ -30,7 +30,8 @@
 
 (defprotocol Model
   (sample [this data-map] [this data-map params])
-  (optimize [this data-map]))
+  (optimize [this data-map] [this data-map params])
+  (variational [this data-map algorithm] [this data-map algorithm params]))
 
 (defn tmp-dir
   []
@@ -44,11 +45,13 @@
   Model
   (sample [this data-map] (sample this data-map {}))
 
-  (sample [this data-map {:keys [chains chain-length] :or {chains 5 chain-length 2000}}]
+  (sample [this data-map {:keys [chains chain-length seed]
+                          :or {chains 5 chain-length 2000 seed -1}}]
     (let [t (tmp-dir)]
       (r-dump/r-dump (str t "/tmp-data.R") data-map)
       (let [procs (mapv #(conch/execute executable "sample"
                                         (str "num_samples=" chain-length)
+                                        "random" (str "seed=" seed)
                                         "data" (str "file=" t "/tmp-data.R")
                                         "output" (str "file=" t "/output-" % ".csv")
                                         {:background true})
@@ -58,10 +61,25 @@
               (mapcat #(output/read-stan-output (str t "/output-" % ".csv")))
               (range chains)))))
 
-  (optimize [this data-map]
+  (optimize [this data-map] (optimize this data-map {}))
+
+  (optimize [this data-map {:keys [seed] :or {seed -1}}]
     (let [t (tmp-dir)]
       (r-dump/r-dump (str t "/tmp-data.R") data-map)
       (execute executable "optimize"
+               "random" (str "seed=" seed)
+               "data" (str "file=" t "/tmp-data.R")
+               "output" (str "file=" t "/output.csv"))
+      (first (output/read-stan-output (str t "/output.csv")))))
+
+  (variational [this data-map algorithm] (variational this data-map algorithm {}))
+
+  (variational [this data-map algorithm {:keys [seed] :or {seed -1}}]
+    (let [t (tmp-dir)]
+      (r-dump/r-dump (str t "/tmp-data.R") data-map)
+      (execute executable "variational"
+               (str "algorithm=" algorithm)
+               "random" (str "seed=" seed)
                "data" (str "file=" t "/tmp-data.R")
                "output" (str "file=" t "/output.csv"))
       (first (output/read-stan-output (str t "/output.csv"))))))
