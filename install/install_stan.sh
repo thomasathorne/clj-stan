@@ -5,7 +5,7 @@ set -e
 apt-get update
 apt-get install --yes make clang g++ libc++-dev
 
-VERSION='2.17.0'
+VERSION='2.18.0'
 
 cd /opt/
 wget "https://github.com/stan-dev/cmdstan/releases/download/v${VERSION}/cmdstan-${VERSION}.tar.gz"

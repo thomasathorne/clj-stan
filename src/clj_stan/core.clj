@@ -111,19 +111,20 @@
         (execute (str home "/bin/stanc") model-file (str "--o=" hpp-file))
         (println (format "Compiling C++ for %s into executable." model))
         (execute "g++"
-                 (str "-I" home "/src")
-                 (str "-I" home "/stan/src")
+                 "-I" home "-I" (str home "/src")
+                 "-isystem" (str home "/stan/src")
                  "-isystem" (str home "/stan/lib/stan_math/")
                  "-isystem" (lib lib-path "eigen")
                  "-isystem" (lib lib-path "boost")
-                 "-isystem" (str (lib lib-path "cvodes") "/include")
-                 "-Wall"
+                 "-isystem" (str (lib lib-path "sundials") "/include")
+                 "-std=c++1y" "-Wall"
                  "-DEIGEN_NO_DEBUG" "-DBOOST_RESULT_OF_USE_TR1" "-DBOOST_NO_DECLTYPE"
-                 "-DBOOST_DISABLE_ASSERTS" "-DFUSION_MAX_VECTOR_SIZE=12" "-DNO_FPRINTF_OUTPUT"
-                 "-pipe" "-Wno-unused-local-typedefs" "-lpthread"
-                 "-O3" "-o" exe
-                 (str home "/src/cmdstan/main.cpp")
+                 "-DBOOST_DISABLE_ASSERTS" "-DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION"
+                 "-DFUSION_MAX_VECTOR_SIZE=12" "-DNO_FPRINTF_OUTPUT"
+                 "-Wno-unused-function" "-Wno-uninitialized" "-Wno-unused-local-typedefs"
+                 "-pipe" "-O3" "-o" exe (str home "/src/cmdstan/main.cpp")
                  "-include" hpp-file
-                 (str (lib lib-path "cvodes") "/lib/libsundials_nvecserial.a")
-                 (str (lib lib-path "cvodes") "/lib/libsundials_cvodes.a"))))
+                 (str (lib lib-path "sundials") "/lib/libsundials_nvecserial.a")
+                 (str (lib lib-path "sundials") "/lib/libsundials_cvodes.a")
+                 (str (lib lib-path "sundials") "/lib/libsundials_idas.a"))))
     (->CompiledModel exe)))
