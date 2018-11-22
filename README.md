@@ -7,9 +7,9 @@ platform as an external process.
 
 This project uses the `cmdstan` command line interface to STAN.
 
-To install `cmdstan` version `2.18.0` (other versions should work too,
-but may need different dependencies), make sure you have the necessary
-dependencies installed:
+Unfortunately, `clj-stan` is not very flexible in which version of
+`cmdstan` it can use. To install `cmdstan` version `2.18.0`, make sure
+you have the necessary dependencies installed:
 
     sudo apt-get install clang g++ libc++-dev
 
