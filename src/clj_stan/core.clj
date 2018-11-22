@@ -74,15 +74,18 @@
 
   (variational [this data-map algorithm] (variational this data-map algorithm {}))
 
-  (variational [this data-map algorithm {:keys [seed] :or {seed -1}}]
+  (variational [this data-map algorithm {:keys [seed samples] :or {seed -1 samples 1000}}]
     (let [t (tmp-dir)]
       (r-dump/r-dump (str t "/tmp-data.R") data-map)
       (execute executable "variational"
                (str "algorithm=" algorithm)
+               (str "output_samples=" samples)
                "random" (str "seed=" seed)
                "data" (str "file=" t "/tmp-data.R")
                "output" (str "file=" t "/output.csv"))
-      (first (output/read-stan-output (str t "/output.csv"))))))
+      (let [[mode & samples] (output/read-stan-output (str t "/output.csv"))]
+        {:mode    mode
+         :samples samples}))))
 
 (defn lib
   [path lib-name]

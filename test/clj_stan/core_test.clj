@@ -52,10 +52,17 @@
     (testing "We can use `stan/variational` to apply the Variational Bayes method."
       (let [data {:N 26 :y [0 1 0 1 1 1 1 1 0 1 1 1 1 0 0 1 1 0 0 0 0 1 1 1 1 1]}
             samples (stan/sample bernoulli data {:seed 1})
-            optimized (stan/variational bernoulli data "fullrank" {:seed 1})]
-        (is (approx= (/ 16.5 25) (:theta optimized) 0.01))
-        (is (< (apply max (map :lp__ samples)) (:lp__ optimized)))
-        (is (approx= (/ 17.5 27) (mean (map :theta samples)) 0.01))))))
+            vb (stan/variational bernoulli data "fullrank" {:seed 1 :samples 2500})
+            posterior-mode (/ 16.5 25)
+            posterior-mean (/ 17.5 27)]
+        (is (approx= posterior-mode (:theta (:mode vb)) 0.01))
+        (is (< (apply max (map :lp__ samples)) (:lp__ (:mode vb))))
+        (is (approx= posterior-mean (mean (map :theta samples)) 0.01))
+        (is (approx= posterior-mean (mean (map :theta (:samples vb))) 0.01))
+        (is (> (- (apply max (map :theta (:samples vb)))
+                  (apply min (map :theta (:samples vb))))
+               0.5))
+        (is (= (count (:samples vb)) 2500))))))
 
 (deftest array-handling-test
   (let [arrays (stan/make (io/resource "arrays.stan"))]
